@@ -100,8 +100,8 @@ HTML = """
             <div class="period">最新：{{ latest.draw.nbr }} 期</div>
             <div class="countdown">
                 下一期：
-                <span class="cd-box">{{ (latest.countdown.seconds // 60) | string | rjust(2, '0') }}</span>分
-                <span class="cd-box">{{ (latest.countdown.seconds % 60) | string | rjust(2, '0') }}</span>秒
+                <span class="cd-box">{{ '%02d' % (latest.countdown.seconds // 60) }}</span>分
+                <span class="cd-box">{{ '%02d' % (latest.countdown.seconds % 60) }}</span>秒
             </div>
             <div class="numbers">
                 <div class="num-box n1">{{ latest.draw.n1 }}</div>
