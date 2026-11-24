@@ -100,9 +100,23 @@ HTML = """
             <div class="period">最新：{{ latest.draw.nbr }} 期</div>
             <div class="countdown">
                 下一期：
-                <span class="cd-box">{{ '%02d' % (latest.countdown.seconds // 60) }}</span>分
-                <span class="cd-box">{{ '%02d' % (latest.countdown.seconds % 60) }}</span>秒
+                <span class="cd-box" id="min">{{ '%02d' % (latest.countdown.seconds // 60) }}</span>分
+                <span class="cd-box" id="sec">{{ '%02d' % (latest.countdown.seconds % 60) }}</span>秒
             </div>
+            <script>
+            (function(){
+                let total = {{ latest.countdown.seconds }};
+                function tick(){
+                    if(total <= 0){ location.reload(); return; }
+                    total--;
+                    let m = Math.floor(total / 60);
+                    let s = total % 60;
+                    document.getElementById('min').textContent = m.toString().padStart(2,'0');
+                    document.getElementById('sec').textContent = s.toString().padStart(2,'0');
+                }
+                setInterval(tick, 1000);
+            })();
+            </script>
             <div class="numbers">
                 <div class="num-box n1">{{ latest.draw.n1 }}</div>
                 <span>+</span>
