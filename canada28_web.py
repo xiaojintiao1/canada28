@@ -23,7 +23,10 @@ cache = {
     "bets": [],
     "counts": {},
     "sums": {},
-    "update_time": ""
+    "update_time": "",
+    "last_period": None,
+    "pending_kill": None,
+    "history": []  # list of {period, kill, actual, win}
 }
 
 HTML = """
@@ -91,6 +94,10 @@ HTML = """
             font-size: 16px; font-weight: bold;
         }
         .footer { text-align: center; color: #999; font-size: 11px; margin-top: 12px; }
+        .history { margin-top: 10px; font-size: 13px; }
+        .hist-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #eee; }
+        .win { color: #27ae60; font-weight: bold; }
+        .lose { color: #e74c3c; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -165,6 +172,21 @@ HTML = """
                 <div class="bet">{{ b }}</div>
                 {% endfor %}
             </div>
+            {% if history %}
+            <div class="history">
+                <div class="stat-title">
+                    最近杀组合记录（共{{ history|length }}期　胜率 {{ '%.1f'|format(win_rate) }}%）
+                    {% if streak_type %}　{{ streak_type }}{{ streak_count }}期{% endif %}
+                </div>
+                {% for h in history[:15] %}
+                <div class="hist-row">
+                    <span>{{ h.period }} 杀{{ h.kill }}</span>
+                    <span>实际{{ h.actual }}</span>
+                    <span class="{{ 'win' if h.win else 'lose' }}">{{ '中' if h.win else '挂' }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
             {% else %}
             <div style="text-align:center;color:#999;">暂无建议</div>
             {% endif %}
@@ -221,16 +243,59 @@ def get_bets(kill):
 def update_loop():
     while True:
         latest = get_latest()
-        history = get_history(100)
-        kill, counts, sums = decide_kill(history)
+        if not latest:
+            time.sleep(5)
+            continue
+
+        current_period = latest["draw"]["nbr"]
+        actual_combo = latest["draw"].get("combo", "")
+
+        # 如果有新期开奖，结算上一期的杀组合
+        if cache["last_period"] and current_period != cache["last_period"] and cache["pending_kill"]:
+            win = actual_combo != cache["pending_kill"]
+            record = {
+                "period": cache["last_period"],
+                "kill": cache["pending_kill"],
+                "actual": actual_combo,
+                "win": win
+            }
+            cache["history"].insert(0, record)
+            if len(cache["history"]) > 50:
+                cache["history"] = cache["history"][:50]
+
+        # 计算当前建议
+        history_data = get_history(100)
+        kill, counts, sums = decide_kill(history_data)
         bets = get_bets(kill) if kill else []
+
+        # 计算胜率
+        total = len(cache["history"])
+        wins = sum(1 for h in cache["history"] if h["win"])
+        win_rate = (wins / total * 100) if total > 0 else 0
+
+        # 计算当前连中/连挂
+        streak_count = 0
+        streak_type = ""
+        if cache["history"]:
+            last_win = cache["history"][0]["win"]
+            for h in cache["history"]:
+                if h["win"] == last_win:
+                    streak_count += 1
+                else:
+                    break
+            streak_type = "连中" if last_win else "连挂"
 
         cache["latest"] = latest
         cache["kill"] = kill
         cache["bets"] = bets
         cache["counts"] = counts
         cache["sums"] = sums
+        cache["pending_kill"] = kill
+        cache["last_period"] = current_period
         cache["update_time"] = time.strftime("%H:%M:%S")
+        cache["win_rate"] = win_rate
+        cache["streak_count"] = streak_count
+        cache["streak_type"] = streak_type
         time.sleep(12)
 
 @app.route("/")
@@ -242,6 +307,10 @@ def index():
         bets=cache["bets"],
         counts=cache["counts"],
         sums=cache["sums"],
+        history=cache["history"],
+        win_rate=cache.get("win_rate", 0),
+        streak_count=cache.get("streak_count", 0),
+        streak_type=cache.get("streak_type", ""),
         update_time=cache["update_time"],
         amount=BET_AMOUNT
     )
