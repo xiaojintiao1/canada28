@@ -226,7 +226,7 @@ HTML = """
             <div style="text-align:center;margin:8px 0;font-size:16px;font-weight:bold;">
                 盈亏总额：<span style="color:{{ '#27ae60' if total_profit >= 0 else '#e74c3c' }};">{{ '%+d'|format(total_profit) }}</span>
             </div>
-            <table>
+            <table id="hist-table">
                 <thead>
                     <tr>
                         <th>期数</th>
@@ -236,7 +236,7 @@ HTML = """
                         <th>盈亏</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="hist-body">
                 {% for h in history[:20] %}
                     <tr>
                         <td>{{ h.period }}</td>
@@ -248,6 +248,30 @@ HTML = """
                 {% endfor %}
                 </tbody>
             </table>
+            {% if history|length > 20 %}
+            <div style="text-align:center;margin-top:8px;">
+                <button onclick="showAllHistory()" style="padding:6px 16px;background:#3498db;color:white;border:none;border-radius:4px;cursor:pointer;">查看更多（当天全部）</button>
+            </div>
+            <script>
+            const allHistory = {{ history|tojson }};
+            function showAllHistory() {
+                const tbody = document.getElementById('hist-body');
+                tbody.innerHTML = '';
+                allHistory.forEach(h => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${h.period}</td>
+                        <td class="kill-text">杀${h.kill}</td>
+                        <td class="actual-text">${h.actual}（${h.sum}）</td>
+                        <td class="${h.win ? 'result-win' : 'result-lose'}">${h.win ? '中' : '错'}</td>
+                        <td style="color:${h.profit > 0 ? '#27ae60' : '#e74c3c'};font-weight:bold;">${h.profit > 0 ? '+' : ''}${h.profit}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                document.querySelector('button[onclick="showAllHistory()"]').style.display = 'none';
+            }
+            </script>
+            {% endif %}
         </div>
         {% endif %}
     </div>
