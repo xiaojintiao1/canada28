@@ -345,7 +345,11 @@ def update_loop():
         # 如果有新期开奖，结算上一期的杀组合
         if cache["last_period"] and current_period != cache["last_period"] and cache["pending_kill"]:
             win = actual_combo != cache["pending_kill"]
-            profit = calc_profit(actual_combo, sum_val)
+            # 杀什么开什么（没中）固定 -300
+            if not win:
+                profit = -300
+            else:
+                profit = calc_profit(actual_combo, sum_val)
             record = {
                 "period": cache["last_period"],
                 "kill": cache["pending_kill"],
