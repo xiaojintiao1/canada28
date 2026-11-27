@@ -10,12 +10,31 @@ import requests
 from collections import Counter
 import threading
 import time
+import json
+import os
 
 app = Flask(__name__)
 
 API_BASE = "https://pc28.world/api/v1"
 HEADERS = {"User-Agent": "Canada28-Web/1.0"}
 BET_AMOUNT = 100
+HISTORY_FILE = "history.json"
+
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return []
+
+def save_history(history):
+    try:
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+    except:
+        pass
 
 cache = {
     "latest": None,
@@ -26,7 +45,7 @@ cache = {
     "update_time": "",
     "last_period": None,
     "pending_kill": None,
-    "history": []  # list of {period, kill, actual, win}
+    "history": load_history()
 }
 
 HTML = """
@@ -262,6 +281,7 @@ def update_loop():
             cache["history"].insert(0, record)
             if len(cache["history"]) > 50:
                 cache["history"] = cache["history"][:50]
+            save_history(cache["history"])
 
         # 计算当前建议
         history_data = get_history(100)
@@ -320,4 +340,3 @@ if __name__ == "__main__":
     t.start()
     print("网页版已启动 → http://127.0.0.1:5000")
     app.run(host="0.0.0.0", port=5000, debug=False)
-  
