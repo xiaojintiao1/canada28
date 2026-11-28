@@ -210,9 +210,12 @@ HTML = """
             </div>
             <div class="bets" style="margin-top:8px;">
                 <div style="color:#666;font-size:12px;margin-bottom:4px;">建议发给机器人</div>
-                {% for b in bets %}
-                <div class="bet" style="padding:6px 14px;font-size:14px;">{{ b }}</div>
+                {% if kill %}
+                {% set others = ["大单", "大双", "小单", "小双"] %}
+                {% for c in others if c != kill %}
+                <div class="bet" style="padding:6px 14px;font-size:14px;">{{ c }}{{ amount }}</div>
                 {% endfor %}
+                {% endif %}
             </div>
         </div>
         {% endif %}
