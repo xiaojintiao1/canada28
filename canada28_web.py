@@ -5,7 +5,7 @@
 运行后访问 http://127.0.0.1:5000
 """
 
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, request, redirect
 import requests
 from collections import Counter
 import threading
@@ -151,8 +151,13 @@ HTML = """
             <script>
             (function(){
                 let total = {{ latest.countdown.seconds }};
+                // 如果倒计时已经很小或为负，立即刷新
+                if(total <= 3){ setTimeout(()=>location.reload(), 500); return; }
                 function tick(){
-                    if(total <= 0){ location.reload(); return; }
+                    if(total <= 0){ 
+                        location.reload(); 
+                        return; 
+                    }
                     total--;
                     let m = Math.floor(total / 60);
                     let s = total % 60;
@@ -228,6 +233,9 @@ HTML = """
             </div>
             <div style="text-align:center;margin:8px 0;font-size:16px;font-weight:bold;">
                 盈亏总额：<span style="color:{{ '#27ae60' if total_profit >= 0 else '#e74c3c' }};">{{ '%+d'|format(total_profit) }}</span>
+                <form method="post" action="/reset" style="display:inline;margin-left:16px;" onsubmit="return confirm('确定重置所有杀组合记录和盈亏吗？');">
+                    <button type="submit" style="padding:4px 12px;background:#e74c3c;color:white;border:none;border-radius:4px;cursor:pointer;font-size:13px;">手动重置</button>
+                </form>
             </div>
             <table id="hist-table">
                 <thead>
@@ -414,6 +422,11 @@ def update_loop():
                     break
             streak_type = "连中" if last_win else "连挂"
 
+        # 倒计时补偿：如果API返回的倒计时过小，强制刷新
+        if latest.get("countdown") and latest["countdown"].get("seconds", 999) <= 2:
+            time.sleep(1)
+            continue
+
         cache["latest"] = latest
         cache["kill"] = kill
         cache["bets"] = bets
@@ -427,6 +440,16 @@ def update_loop():
         cache["streak_type"] = streak_type
         cache["total_profit"] = total_profit
         time.sleep(12)
+
+@app.route("/reset", methods=["POST"])
+def reset():
+    cache["history"] = []
+    save_history([])
+    cache["win_rate"] = 0
+    cache["total_profit"] = 0
+    cache["streak_count"] = 0
+    cache["streak_type"] = ""
+    return redirect("/")
 
 @app.route("/")
 def index():
